@@ -1,0 +1,85 @@
+# EXFIL / C2 Detection Engine v6
+
+## Overview
+This script analyzes a PCAP file to detect **Command & Control (C2)** beaconing and **Data Exfiltration** activity, with special focus on patterns commonly seen in Cobalt Strike, Trickbot, and similar threats.
+
+---
+
+## What This Code Does (Key Features)
+
+### 1. **Input Processing**
+- Takes a PCAP file as input (via CLI or default path)
+- Uses `tshark` to extract relevant protocol fields (HTTP, DNS, SMB, DCERPC, TLS, NTLM)
+- Robust CSV parsing with proper quoting
+
+### 2. **Signal Detection (Per-Packet)**
+- **DNS Tunneling**: High entropy + long query names
+- **HTTP Activity**: Uploads (POST/PUT), potential beacons
+- **TLS Visibility**: ClientHello + SNI extraction
+- **Lateral Movement**: SMB admin/IPC shares, DCERPC execution, NTLM auth
+- **File Activity**: Upload indicators
+
+### 3. **Flow Aggregation**
+- Groups traffic into directional flows `(src → dst)`
+- Tracks total bytes + **internal → external** bytes only (true exfil metric)
+- Collects timestamps and DNS queries per flow
+
+### 4. **Behavioral Analysis**
+- **Beacon Detection**: Low jitter (regular inter-arrival times) using Coefficient of Variation
+- **DNS Tunneling Confirmation**: Aggregate entropy + length across multiple queries
+- Promotes weak signals to strong ones when combined (e.g., HTTP + regularity = confirmed beacon)
+
+### 5. **Pivot Host Detection (v5/v6 Highlight)**
+- Identifies hosts that:
+  1. Show **external C2 signals** (beaconing, upload, DNS tunnel, etc.)
+  2. Perform **lateral movement** to multiple internal hosts (SMB/DCERPC)
+- This is the classic "beacon-in → spread-out" pattern
+
+### 6. **Risk Scoring Engine**
+- Weighted scoring based on signals
+- Volume bonus for large exfil
+- Direction bonus (internal → external)
+- **Pivot bonus** (+25) for flows involving pivot hosts
+- Final score capped at 100
+
+### 7. **Output & Visualization**
+- Detailed classification of flows (High / Suspicious / Normal)
+- Top internal data senders
+- Network graph (`networkx` + `matplotlib`) with pivot hosts highlighted in red
+- Saves graph as PNG
+
+---
+
+## Usage
+
+```bash
+python Exfil_C2_v6.py <pcap_file> [--min-peers 3] [--output graph.png]
+```
+
+### Example
+```bash
+python Exfil_C2_v6.py "2021-05-26-Trickbot-infection-with-Cobalt-Strike.pcap"
+```
+
+---
+
+## Dependencies
+- `tshark` (Wireshark)
+- Python packages: `pandas`, `networkx`, `matplotlib`, `ipaddress`
+
+---
+
+## Strengths
+- Excellent for **Cobalt Strike / Trickbot** style infections
+- Strong pivot host logic
+- Directional exfil focus
+- Good statistical beacon detection
+
+## Limitations (2026 perspective)
+- Limited visibility into heavily encrypted modern C2 (HTTP/2, custom protocols)
+- Can be extended with JA3 fingerprints, flow statistics, etc.
+
+---
+
+**Author**: Enhanced from v5 by Grok (xAI)  
+**Version**: 6 (June 2026)
