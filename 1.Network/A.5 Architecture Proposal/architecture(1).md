@@ -336,7 +336,91 @@ flowchart TD
 
 > **S** = Days (config change) · **M** = Weeks (tool deployment) · **L** = Months (architectural change)
 
+--- 
+
 ---
+
+## Implementation Roadmap
+
+> Controls ordered by **severity first, then effort**. The highest-severity controls — those that directly stop active C2, exfiltration, and lateral movement — start on **Week 1 (May 15)**. Architectural changes that require re-IP and switch work follow in Phase 3.
+
+### Severity & effort key
+
+| S.No | Rating | Meaning |
+|------|--------|---------|
+| 1 | **CRITICAL** | Directly blocks a confirmed active attack vector from the PCAP |
+| 2 | **HIGH** | Adds detection/prevention that would have caught the attack within 5 min |
+| 3 | **MEDIUM** | Architectural hardening that removes entire attack surface categories |
+| 4 | **S** (days) | Config change only — single maintenance window |
+| 5 | **M** (weeks) | Tool deployment + tuning |
+| 6 | **L** (months) | Architectural change requiring re-IP, regression testing, change freeze |
+
+---
+
+### Phase 1 — Quick wins · Week 1–2 (May 15–May 28)
+
+*CRITICAL severity · effort S (days) · start immediately*
+
+| S.No | Control | Severity | Effort | Starts | Duration | Fixes (PCAP) | MITRE | Trade-off |
+|------|---------|----------|--------|--------|----------|--------------|-------|-----------|
+| 1 | Block 5 C2 IPs at perimeter | **CRITICAL** | S | Week 1 | 2 days | 28 TLS sessions · frames 791–26451 | T1071.001 · T1041 | Attacker rotates IPs — maintain blocklist with threat feed |
+| 2 | Egress allowlist ports 80/443 · block port 447 | **CRITICAL** | S | Week 1 | 3 days | Port 447 exfil channel · antivirusupdaty.com | T1041 · T1048 | Audit legacy tools using non-standard ports before enforcing |
+| 3 | DNS Firewall — block C2 domain + IP recon services | **CRITICAL** | S | Week 2 | 3 days | antivirusupdaty.com · api.ipify.org · ipinfo.io · myexternalip.com | T1568 · T1016 | Start blocklist-only — no sinkhole until tuned |
+
+---
+
+### Phase 2 — Tool deployments · Week 3–8 (May 29–July 9)
+
+*HIGH severity · effort M (weeks)*
+
+| S.No | Control | Severity | Effort | Starts | Duration | Fixes (PCAP) | MITRE | Trade-off |
+|------|---------|----------|--------|--------|----------|--------------|-------|-----------|
+| 4 | Suricata IDS — beacon · svcctl · exfil rules | **HIGH** | M | Week 3 | 4 weeks | C2 undetected 80 min · frame 10799 | T1071.001 · T1021.002 · T1041 | 1 week post-deploy for FP tuning — test rules on PCAP first |
+| 5 | Zeek + SIEM pipeline — conn · DNS · SMB logs | **HIGH** | M | Week 4 | 5 weeks | Lateral movement undetected · frames 2910, 13210 | T1021.002 · T1041 · T1003 | Define triage runbook before go-live to prevent alert fatigue |
+| 6 | MFA + PAM for privileged accounts | **HIGH** | M | Week 5 | 4 weeks | DC compromised · LSASS dumped · frame 23758 | T1003 · T1078 | Phased rollout — admins first, then all staff · 8h session timeout |
+
+---
+
+### Phase 3 — Architectural changes · Week 9–20 (July 10–Oct 1)
+
+*MEDIUM severity · effort L (months) · cannot be rushed — requires re-IP and regression testing*
+
+| S.No | Control | Severity | Effort | Starts | Duration | Fixes (PCAP) | MITRE | Trade-off |
+|------|---------|----------|--------|--------|----------|--------------|-------|-----------|
+| 7 | VLAN 10/20/30 segmentation — DMZ · Servers · Endpoints | **MEDIUM** | L | Week 9 | 8 weeks | Flat subnet — frame 10799 workstation → DC · all 5 hosts reachable | T1021.002 · T1543 | Significant re-IP + switch reconfig · full flow audit required per VLAN |
+| 8 | East-west firewall + jump host (VLAN30 → VLAN20 only) | **MEDIUM** | L | Week 13 | 8 weeks | 2,164 SMB packets workstation → DC · direct svcctl cross-VLAN | T1021.002 | All admin flows rerouted through jump host · adds one-hop latency |
+
+---
+
+### Gantt — visual schedule
+
+```
+Week →       W1    W2    W3    W4    W5    W6    W7    W8    W9   W10   W11   W12  W13-16 W17-20
+May15 →      15    22    29  Jun5   12    19    26   Jul3   10    17    24   Aug1  Sep–   Oct–
+
+1. Block C2 IPs      ████
+2. Egress allowlist  ██████
+3. DNS Firewall            ██████
+4. Suricata IDS                  ████████████████
+5. Zeek + SIEM                         ████████████████████
+6. MFA + PAM                                 ████████████
+7. VLAN segmentation                                        ████████████████████
+8. East-west FW                                                          ████████████████████████
+```
+
+> ████ = active work · controls with the same colour on the Gantt above share a PCAP finding they jointly address
+
+---
+
+### Why this order?
+
+| S.No | Reason | Controls |
+|------|--------|---------|
+| 1 | The 5 C2 IPs and port 447 are **known, confirmed IOCs** — blocking them stops an *active* attack pattern with zero architecture changes | 1, 2 |
+| 2 | DNS Firewall eliminates the IP recon loop (api.ipify.org → ipinfo.io → myexternalip.com) that precedes every exfiltration event in the PCAP | 3 |
+| 3 | Suricata/Zeek/SIEM turn the 80-minute blind spot into a < 5-minute alert — needed before VLAN work begins so there is visibility during the re-IP window | 4, 5 |
+| 4 | MFA/PAM closes the privilege escalation path that let the DC get dumped | 6 |
+| 5 | VLAN segmentation + east-west firewall are the most impactful long-term controls but require change freezes and cannot be rushed — sequenced last to avoid re-doing network design after tool deployments | 7, 8 |
 
 *Project KAVACH · Workstream A · A.5 Architecture Proposal*
 *Futurense AI Clinic × IIT Roorkee · June 2026*
