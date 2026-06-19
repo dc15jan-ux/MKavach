@@ -112,9 +112,9 @@ The Joint Threat Model treated Meridian FinServe as one system, not two. Attack 
 ## 03. STOP — What to Leave Behind
 
 ### Fixed Iteration Boundaries Without Mid-Sprint Adjustment
-The engagement was designed around one-week iterations, but mid-sprint scope expansion — particularly adding additional PCAP corroboration in Iteration 2 and extending SAST patch coverage to all three DVWA security levels — pushed work beyond the planned boundaries. Future engagements benefit from a lightweight mid-sprint check to redistribute scope before it accumulates at the end.
+The engagement was designed around one-week iterations, but mid-sprint scope expansion — particularly adding additional PCAP corroboration in Iteration 2 and extending SAST patch coverage to all three DVWA security levels — pushed work beyond the planned boundaries. Future engagements benefit from a lightweight mid-sprint check to redistribute scope before it accumulates at the end.<br>
 
-
+Vague IOC Attribution: Listing IP addresses as indicators without linking them directly to specific packet ranges or confidence scores. All IOCs must be explicitly justified.
 
 ---
 
